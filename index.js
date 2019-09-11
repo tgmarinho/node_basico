@@ -1,80 +1,79 @@
 const express = require("express");
-
 process.PORT = 3333;
+
 const server = express();
 
 server.use(express.json());
 
-const users = ["Thiago", "Delacyr", "Filipe", "Pedro"];
+const projects = [];
+let countRequest = 0;
 
-// Middleware global
-server.use((req, res, next) => {
-  console.time("A requisição foi chamada");
-  next();
-});
-
-server.use((req, res, next) => {
-  console.time("REQUEST");
-  console.log(`Método: ${req.method} 
-               na URL: ${req.url} `);
-  next();
-  console.timeEnd("REQUEST");
-});
-
-// Middleware Local específico
-function checkUserExists(req, res, next) {
-  if (!req.body.name) {
-    return res.status(400).json({ error: "Name is required!" });
+function checkExistsProject(req, res, next) {
+  const id = req.body.id;
+  if (projects.some(project => project.id == id)) {
+    return res.status(400).json({ error: "Project already exist!" });
   }
 
   return next();
 }
 
-// Middleware Local específico
-function checkUserInArray(req, res, next) {
-  const user = users[req.params.index];
-  if (!user) {
-    return res.status(400).json({ error: "User does not exists!" });
+function logCountRequest(req, res, next) {
+  countRequest = countRequest + 1;
+  console.log(`${countRequest} requests were made to the server`);
+  next();
+}
+
+function projectValidate(req, res, next) {
+  const { id, title } = req.body;
+  if (!id || !title) {
+    return res.status(400).json({ error: "ID and Title is required!" });
   }
-
-  req.user = user;
-
   return next();
 }
 
-// Lista usuário de index = ao que foi passado na rota
-server.get("/users/:index", checkUserInArray, (req, res) => {
-  return res.json(req.user);
+server.post(
+  "/projects",
+  logCountRequest,
+  projectValidate,
+  checkExistsProject,
+  (req, res) => {
+    const { id, title, tasks } = req.body;
+    projects.push({ id, title, tasks });
+    return res.json(projects);
+  }
+);
+
+server.get("/projects", logCountRequest, (req, res) => {
+  return res.json(projects);
 });
 
-// Listar todos usuários
-server.get("/users", (req, res) => {
-  return res.json(users);
+server.put("/projects/:id", logCountRequest, (req, res) => {
+  const { id } = req.params;
+  const { title } = req.body;
+
+  const project = projects.find(project => project.id == id);
+  project.title = title;
+
+  return res.json(project);
 });
 
-// Criar usuário
-server.post("/users", checkUserExists, (req, res) => {
-  const { name } = req.body;
-
-  users.push(name);
-
-  return res.json(users);
+server.delete("/projects/:id", logCountRequest, (req, res) => {
+  const { id } = req.params;
+  const projectIdx = projects.findIndex(project => project.id == id);
+  projects.splice(projectIdx, 1);
+  return res.send({ message: "Deletado com sucesso" });
 });
 
-// Editar/Atualizar usuário
-server.put("/users/:index", checkUserInArray, checkUserExists, (req, res) => {
-  const { index } = req.params;
-  const { name } = req.body;
-  users[index] = name;
-  return res.json(users);
-});
+server.post("/projects/:id/tasks", logCountRequest, (req, res) => {
+  const { id } = req.params;
+  const { title } = req.body;
 
-server.delete("/users/:index", checkUserInArray, (req, res) => {
-  const { index } = req.params;
-  users.splice(index, 1);
-  return res.json({ message: "Deletado com sucesso" });
+  const project = projects.find(project => project.id == id);
+  console.log(project);
+  project.tasks.push(title);
+  return res.json(project.tasks);
 });
 
 server.listen(process.PORT, () => {
-  console.log("executando o express na porta: " + process.PORT);
+  console.log(`executando o servidor na ${process.PORT}`);
 });
