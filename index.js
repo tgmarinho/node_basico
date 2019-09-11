@@ -10,7 +10,7 @@ const server = express();
  * Request Body = { "name": "Thiago" }
  */
 
-const users = ["Thiago", "Delacyr", "Filipe"];
+const users = ["Thiago", "Delacyr", "Filipe", "Pedro"];
 
 // Route params = /users/1
 // fazer a requisição no navegador: http://localhost:3333/users/1
